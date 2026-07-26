@@ -1,0 +1,26 @@
+If you want to run the code directly on your system with hot-reload logs:
+
+1.Start the Database (Must be done first):
+  Open Docker Desktop.
+  In your terminal, run this command to start the MongoDB database container in the background:
+   bash
+
+    docker-compose up -d mongodb
+
+2.Start the Backend:
+ Open a terminal tab, enter the backend folder, and start the API:
+  bash
+
+        cd backend
+        npm run dev
+      (Runs on http://localhost:5000)
+
+3.Start the Frontend:
+  Open a new terminal tab, enter the frontend folder, and start the UI:
+  bash
+
+       cd frontend
+       npm run dev
+    (Runs on http://localhost:5173 or your local IP)
+
+4.Open your browser and navigate to the link printed in the frontend terminal!

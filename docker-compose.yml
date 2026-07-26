@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: shipflowx-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - shipflowx-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shipflowx-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/shipflowx
+      - JWT_SECRET=shipflowx_jwt_secret_key_2026
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - shipflowx-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shipflowx-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      - VITE_BACKEND_URL=http://backend:5000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - shipflowx-network
+
+volumes:
+  mongo-data:
+
+networks:
+  shipflowx-network:
+    driver: bridge
