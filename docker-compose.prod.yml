@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0-jammy
+    container_name: shipflowx-mongodb-prod
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      # Enforce database root credentials initialization
+      - MONGO_INITDB_ROOT_USERNAME=db_admin
+      - MONGO_INITDB_ROOT_PASSWORD=shipflowx_prod_password_2026
+      - MONGO_INITDB_DATABASE=shipflowx
+    volumes:
+      - mongo-data-prod:/data/db
+    networks:
+      - shipflowx-network-prod
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shipflowx-backend-prod
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      # Connect using root credentials and target admin authSource database
+      - MONGO_URI=mongodb://db_admin:shipflowx_prod_password_2026@mongodb:27017/shipflowx?authSource=admin
+      - JWT_SECRET=shipflowx_production_jwt_secret_key_hash_code_2026
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - shipflowx-network-prod
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shipflowx-frontend-prod
+    restart: unless-stopped
+    ports:
+      # Expose host port 8081 mapping to Nginx port 80 inside container
+      - "8081:80"
+    depends_on:
+      - backend
+    networks:
+      - shipflowx-network-prod
+
+volumes:
+  mongo-data-prod:
+
+networks:
+  shipflowx-network-prod:
+    driver: bridge

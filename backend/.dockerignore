@@ -1,0 +1,28 @@
+# Ignore local node packages
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Ignore local secret configurations
+.env
+.env.local
+.env.*.local
+
+# Ignore version control files
+.git
+.gitignore
+.github/
+
+# Ignore documentation and tests
+docs/
+tests/
+README.md
+
+# Ignore temp folders and debug scripts
+scripts/
+reset-admin-password.js
+check-users.js
+.vscode/
+.idea/
+.DS_Store

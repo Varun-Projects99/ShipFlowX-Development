@@ -1,0 +1,26 @@
+# Ignore local node packages
+node_modules/
+npm-debug.log
+
+# Ignore local secret configurations
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore version control files
+.git
+.gitignore
+
+# Ignore build directory output (Vite compiles fresh in Docker)
+dist/
+build/
+
+# Ignore documentation, tests, and configuration assets
+docs/
+tests/
+README.md
+.vscode/
+.idea/
+.DS_Store

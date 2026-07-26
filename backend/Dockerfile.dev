@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy catalogs
+COPY package*.json ./
+
+# Install dev dependencies (includes nodemon)
+RUN npm install
+
+# Copy code
+COPY . .
+
+# Expose Express port
+EXPOSE 5000
+
+# Start server via nodemon watcher
+CMD ["npm", "run", "dev"]
