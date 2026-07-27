@@ -6,14 +6,26 @@
 # Env context tag
 environment  = "prod"
 project_name = "shipflowx"
-location     = "eastus2"
 
-# Registry and Storage configurations (Must be globally unique)
-# Replace values with unique lowercase strings (numbers allowed, no special chars)
+# Default region optimized for student accounts capacity
+location     = "centralindia"
+
+# ==============================================================================
+# Feature Flags (True = Deploy, False = Skip)
+# Perfect for Azure for Students or Trial accounts that enforce restrictive resource policies.
+# ==============================================================================
+enable_storage    = false  # Set to true to deploy the Remote State Storage Account
+enable_network    = false  # Set to true to deploy the Virtual Network & NSGs
+enable_acr        = false  # Set to true to deploy the Azure Container Registry
+enable_monitoring = false  # Set to true to deploy the Log Analytics Workspace
+enable_identity   = false  # Set to true to deploy the Managed Identity
+enable_aks        = false  # Set to true to deploy the AKS Cluster (Core limit checks apply)
+
+# ==============================================================================
+# Sizing parameters (Used if corresponding flag above is enabled)
+# ==============================================================================
 storage_account_name = "sfxstateprod9988"
 acr_name             = "sfxacrprod9988"
-
-# AKS Cluster instance parameters
-aks_node_count     = 2
-aks_vm_size        = "Standard_D2s_v5"
-kubernetes_version = "1.28"
+aks_node_count       = 2
+aks_vm_size          = "Standard_D2s_v5"
+kubernetes_version   = "1.28"

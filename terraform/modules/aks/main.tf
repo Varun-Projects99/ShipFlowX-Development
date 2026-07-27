@@ -12,7 +12,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     node_count     = var.node_count
     vm_size        = var.vm_size
     vnet_subnet_id = var.subnet_id
-
+    
     # Scale Settings
     enable_auto_scaling = false
   }
@@ -24,13 +24,16 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   # Azure CNI Networking Configuration
   network_profile {
-    network_plugin = "azure"
-    dns_service_ip = "10.0.0.10"
-    service_cidr   = "10.0.0.0/16"
+    network_plugin     = "azure"
+    dns_service_ip     = "10.0.0.10"
+    service_cidr       = "10.0.0.0/16"
   }
 
-  # Log Analytics / Monitor Cluster Integration
-  oms_agent {
-    log_analytics_workspace_id = var.log_analytics_workspace_id
+  # Conditional Log Analytics / Monitor Cluster Integration
+  dynamic "oms_agent" {
+    for_each = var.log_analytics_workspace_id != null && var.log_analytics_workspace_id != "" ? [1] : []
+    content {
+      log_analytics_workspace_id = var.log_analytics_workspace_id
+    }
   }
 }
