@@ -1,0 +1,134 @@
+# ==============================================================================
+# ShipFlowX Enterprise CI/CD Pipeline - Infrastructure Deployment
+# ==============================================================================
+# This pipeline orchestrates Terraform infrastructure deployments in 4 distinct 
+# stages (Init, Validate, Plan, Apply).
+# ==============================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - terraform/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # The name of the Azure Resource Manager Service Connection configured in Azure DevOps
+  azureServiceConnection: 'AzureServiceConnection'
+  terraformVersion: '1.15.7'
+
+stages:
+  # ==========================================================================
+  # Stage 1: Terraform Init
+  # ==========================================================================
+  - stage: Terraform_Init
+    displayName: 'Terraform Init'
+    jobs:
+      - job: Init
+        displayName: 'Terraform Init Job'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Execute Terraform Init'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd terraform
+                terraform init -backend=false
+                echo "Terraform initialized successfully."
+
+  # ==========================================================================
+  # Stage 2: Terraform Validate
+  # ==========================================================================
+  - stage: Terraform_Validate
+    displayName: 'Terraform Validate'
+    dependsOn: Terraform_Init
+    jobs:
+      - job: Validate
+        displayName: 'Terraform Validate Job'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Execute Terraform Validate'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd terraform
+                terraform init -backend=false
+                terraform validate
+                echo "Terraform syntax validation succeeded."
+
+  # ==========================================================================
+  # Stage 3: Terraform Plan
+  # ==========================================================================
+  - stage: Terraform_Plan
+    displayName: 'Terraform Plan'
+    dependsOn: Terraform_Validate
+    jobs:
+      - job: Plan
+        displayName: 'Terraform Plan Job'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Generate Dry-Run Plan'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd terraform
+                terraform init -backend=false
+                terraform plan -out=$(Build.ArtifactStagingDirectory)/tfplan
+            env:
+              # Exposes Azure credentials to the Terraform process
+              ARM_CLIENT_ID: $(servicePrincipalId)
+              ARM_CLIENT_SECRET: $(servicePrincipalKey)
+              ARM_TENANT_ID: $(tenantId)
+              ARM_SUBSCRIPTION_ID: $(subscriptionId)
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Terraform Plan Artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/tfplan'
+              artifactName: 'tfplan-artifact'
+              publishLocation: 'pipeline'
+
+  # ==========================================================================
+  # Stage 4: Terraform Apply
+  # ==========================================================================
+  - stage: Terraform_Apply
+    displayName: 'Terraform Apply'
+    dependsOn: Terraform_Plan
+    condition: succeeded()
+    jobs:
+      - job: Apply
+        displayName: 'Terraform Apply Job'
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download Plan Artifact'
+            inputs:
+              buildType: 'current'
+              artifactName: 'tfplan-artifact'
+              targetPath: '$(Pipeline.Workspace)/tfplan-artifact'
+
+          - task: AzureCLI@2
+            displayName: 'Execute Terraform Apply'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd terraform
+                terraform init -backend=false
+                # Run apply using the generated, downloaded plan file
+                terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-artifact/tfplan
+            env:
+              ARM_CLIENT_ID: $(servicePrincipalId)
+              ARM_CLIENT_SECRET: $(servicePrincipalKey)
+              ARM_TENANT_ID: $(tenantId)
+              ARM_SUBSCRIPTION_ID: $(subscriptionId)

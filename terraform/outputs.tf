@@ -1,6 +1,6 @@
 output "resource_group_name" {
-  value       = module.resource_group.name
-  description = "The name of the main resource group."
+  value       = local.rg_name
+  description = "The name of the active resource group."
 }
 
 output "vnet_id" {

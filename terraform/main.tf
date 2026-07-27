@@ -1,6 +1,23 @@
-# 1. Resource Group Module (Always enabled as a logical boundary)
+# ==============================================================================
+# Demo Resource Group (Always enabled for student demonstration / compatibility overrides)
+# ==============================================================================
+resource "azurerm_resource_group" "demo" {
+  name     = "shipflowx-demo-rg"
+  location = "East US 2"
+}
+
+# ==============================================================================
+# Local Resource Group routing variables
+# ==============================================================================
+locals {
+  rg_name     = var.enable_resource_group_module ? module.resource_group[0].name : azurerm_resource_group.demo.name
+  rg_location = var.enable_resource_group_module ? module.resource_group[0].location : azurerm_resource_group.demo.location
+}
+
+# 1. Resource Group Module (Disabled by default, enabled via flag for full deployment)
 module "resource_group" {
   source   = "./modules/resource-group"
+  count    = var.enable_resource_group_module ? 1 : 0
   name     = local.resource_group_name
   location = var.location
   tags     = local.common_tags
@@ -10,8 +27,8 @@ module "resource_group" {
 module "network" {
   source              = "./modules/network"
   count               = var.enable_network ? 1 : 0
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
+  resource_group_name = local.rg_name
+  location            = local.rg_location
   vnet_name           = local.vnet_name
   tags                = local.common_tags
 }
@@ -20,8 +37,8 @@ module "network" {
 module "acr" {
   source              = "./modules/acr"
   count               = var.enable_acr ? 1 : 0
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
+  resource_group_name = local.rg_name
+  location            = local.rg_location
   acr_name            = var.acr_name
   tags                = local.common_tags
 }
@@ -30,8 +47,8 @@ module "acr" {
 module "identity" {
   source              = "./modules/identity"
   count               = var.enable_identity ? 1 : 0
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
+  resource_group_name = local.rg_name
+  location            = local.rg_location
   identity_name       = local.identity_name
   tags                = local.common_tags
 }
@@ -40,8 +57,8 @@ module "identity" {
 module "monitoring" {
   source              = "./modules/monitoring"
   count               = var.enable_monitoring ? 1 : 0
-  resource_group_name = module.resource_group.name
-  location            = module.resource_group.location
+  resource_group_name = local.rg_name
+  location            = local.rg_location
   workspace_name      = local.workspace_name
   tags                = local.common_tags
 }
@@ -50,8 +67,8 @@ module "monitoring" {
 module "storage" {
   source               = "./modules/storage"
   count                = var.enable_storage ? 1 : 0
-  resource_group_name  = module.resource_group.name
-  location             = module.resource_group.location
+  resource_group_name  = local.rg_name
+  location             = local.rg_location
   storage_account_name = var.storage_account_name
   tags                 = local.common_tags
 }
@@ -60,8 +77,8 @@ module "storage" {
 module "aks" {
   source                     = "./modules/aks"
   count                      = var.enable_aks ? 1 : 0
-  resource_group_name        = module.resource_group.name
-  location                   = module.resource_group.location
+  resource_group_name        = local.rg_name
+  location                   = local.rg_location
   cluster_name               = local.cluster_name
   dns_prefix                 = "${var.project_name}-dns"
   subnet_id                  = var.enable_network ? module.network[0].aks_subnet_id : null
@@ -77,7 +94,6 @@ module "aks" {
 # ==============================================================================
 
 # Link AKS Kubelet Managed Identity to pull container images from ACR
-# Executed only when both AKS and ACR are enabled
 resource "azurerm_role_assignment" "aks_acr_pull" {
   count                            = var.enable_aks && var.enable_acr ? 1 : 0
   principal_id                     = module.aks[0].kubelet_identity_object_id
@@ -87,10 +103,9 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
 }
 
 # Assign Reader permissions to the User-Assigned Managed Identity at RG scope
-# Executed only when Managed Identity is enabled
 resource "azurerm_role_assignment" "identity_rg_reader" {
   count                = var.enable_identity ? 1 : 0
   principal_id         = module.identity[0].principal_id
   role_definition_name = "Reader"
-  scope                = module.resource_group.id
+  scope                = var.enable_resource_group_module ? module.resource_group[0].id : azurerm_resource_group.demo.id
 }

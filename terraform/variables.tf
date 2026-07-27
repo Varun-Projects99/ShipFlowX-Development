@@ -29,6 +29,12 @@ variable "location" {
 # Feature Flags (Maximizes compatibility for limited subscriptions like Student accounts)
 # ==============================================================================
 
+variable "enable_resource_group_module" {
+  type        = bool
+  description = "Whether to provision the Resource Group via module. Set to false to fallback to the demo resource group."
+  default     = false
+}
+
 variable "enable_storage" {
   type        = bool
   description = "Whether to provision the Storage Account and Blob Container. Set to false if storage resources are blocked."
