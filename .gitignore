@@ -31,3 +31,11 @@ out/
 
 # Docker volumes data
 mongo-data/
+
+# Terraform ignored files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
