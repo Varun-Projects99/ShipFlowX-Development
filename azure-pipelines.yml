@@ -44,14 +44,14 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # Run init natively using official Terraform task
+          # Run init natively using local backend configuration to avoid Service Connection validation blocks
           - task: TerraformTaskV4@4
             displayName: 'Execute Terraform Init'
             inputs:
               provider: 'azurerm'
               command: 'init'
               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-              commandOptions: '-backend=false'
+              backendType: 'local'
 
   # ==========================================================================
   # Stage 2: Terraform Validate
@@ -73,14 +73,14 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # Initialize local providers and validate syntax
+          # Initialize local backend providers and validate syntax
           - task: TerraformTaskV4@4
             displayName: 'Execute Init for Validation'
             inputs:
               provider: 'azurerm'
               command: 'init'
               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-              commandOptions: '-backend=false'
+              backendType: 'local'
 
           - task: TerraformTaskV4@4
             displayName: 'Execute Terraform Validate'
@@ -109,22 +109,23 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # Initialize and generate plan using the ARM service connection
+          # Initialize using local backend
           - task: TerraformTaskV4@4
             displayName: 'Execute Init for Plan'
             inputs:
               provider: 'azurerm'
               command: 'init'
               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-              commandOptions: '-backend=false'
+              backendType: 'local'
 
+          # Run plan using the ARM service connection for cloud provider authentication
           - task: TerraformTaskV4@4
             displayName: 'Execute Terraform Plan'
             inputs:
               provider: 'azurerm'
               command: 'plan'
               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-              commandOptions: '-backend=false -out=$(Build.ArtifactStagingDirectory)/tfplan'
+              commandOptions: '-out=$(Build.ArtifactStagingDirectory)/tfplan'
               environmentServiceNameAzureRM: '$(azureServiceConnection)'
 
           - task: PublishPipelineArtifact@1
@@ -162,20 +163,21 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # Initialize and apply plan using the ARM service connection
+          # Initialize using local backend
           - task: TerraformTaskV4@4
             displayName: 'Execute Init for Apply'
             inputs:
               provider: 'azurerm'
               command: 'init'
               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-              commandOptions: '-backend=false'
+              backendType: 'local'
 
+          # Apply plan using the ARM service connection
           - task: TerraformTaskV4@4
             displayName: 'Execute Terraform Apply'
             inputs:
               provider: 'azurerm'
               command: 'apply'
               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-              commandOptions: '-backend=false -auto-approve $(Pipeline.Workspace)/tfplan-artifact/tfplan'
+              commandOptions: '-auto-approve $(Pipeline.Workspace)/tfplan-artifact/tfplan'
               environmentServiceNameAzureRM: '$(azureServiceConnection)'
