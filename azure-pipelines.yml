@@ -2,7 +2,7 @@
 # ShipFlowX Enterprise CI/CD Pipeline - Infrastructure Deployment
 # ==============================================================================
 # This pipeline orchestrates Terraform infrastructure deployments in 4 distinct 
-# stages (Init, Validate, Plan, Apply).
+# stages (Init, Validate, Plan, Apply) using official Azure Pipeline tasks.
 # ==============================================================================
 
 trigger:
@@ -34,7 +34,7 @@ stages:
       - job: Init
         displayName: 'Terraform Init'
         steps:
-          # Install official Terraform binary
+          # Install official Terraform binary on the agent
           - task: TerraformInstaller@1
             displayName: 'Install Terraform'
             inputs:
@@ -44,12 +44,14 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # Run init
-          - script: |
-              cd terraform
-              terraform init -backend=false
-              echo "Terraform initialized successfully."
-            displayName: 'Run terraform init'
+          # Run init natively using official Terraform task
+          - task: TerraformTaskV4@4
+            displayName: 'Execute Terraform Init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+              commandOptions: '-backend=false'
 
   # ==========================================================================
   # Stage 2: Terraform Validate
@@ -61,7 +63,7 @@ stages:
       - job: Validate
         displayName: 'Terraform Validate'
         steps:
-          # Install official Terraform binary
+          # Install official Terraform binary on the agent
           - task: TerraformInstaller@1
             displayName: 'Install Terraform'
             inputs:
@@ -71,17 +73,25 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # Run validation
-          - script: |
-              cd terraform
-              terraform init -backend=false
-              terraform validate
-              echo "Terraform syntax validation succeeded."
-            displayName: 'Run terraform validate'
+          # Initialize local providers and validate syntax
+          - task: TerraformTaskV4@4
+            displayName: 'Execute Init for Validation'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+              commandOptions: '-backend=false'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Execute Terraform Validate'
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
 
   # ==========================================================================
   # Stage 3: Terraform Plan
-  # ==============================================================================
+  # ==========================================================================
   - stage: Terraform_Plan
     displayName: 'Terraform Plan'
     dependsOn: Terraform_Validate
@@ -89,7 +99,7 @@ stages:
       - job: Plan
         displayName: 'Terraform Plan'
         steps:
-          # Install official Terraform binary
+          # Install official Terraform binary on the agent
           - task: TerraformInstaller@1
             displayName: 'Install Terraform'
             inputs:
@@ -99,17 +109,23 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # AzureCLI@2 is used for authenticated dry-run planning
-          - task: AzureCLI@2
-            displayName: 'Run terraform plan'
+          # Initialize and generate plan using the ARM service connection
+          - task: TerraformTaskV4@4
+            displayName: 'Execute Init for Plan'
             inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                cd terraform
-                terraform init -backend=false
-                terraform plan -out=$(Build.ArtifactStagingDirectory)/tfplan
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+              commandOptions: '-backend=false'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Execute Terraform Plan'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+              commandOptions: '-backend=false -out=$(Build.ArtifactStagingDirectory)/tfplan'
+              environmentServiceNameAzureRM: '$(azureServiceConnection)'
 
           - task: PublishPipelineArtifact@1
             displayName: 'Publish Plan Artifact'
@@ -136,7 +152,7 @@ stages:
               artifactName: 'tfplan-artifact'
               targetPath: '$(Pipeline.Workspace)/tfplan-artifact'
 
-          # Install official Terraform binary
+          # Install official Terraform binary on the agent
           - task: TerraformInstaller@1
             displayName: 'Install Terraform'
             inputs:
@@ -146,14 +162,20 @@ stages:
           - script: terraform version
             displayName: 'Print Terraform Version'
 
-          # AzureCLI@2 is used for authenticated resource deployment
-          - task: AzureCLI@2
-            displayName: 'Run terraform apply'
+          # Initialize and apply plan using the ARM service connection
+          - task: TerraformTaskV4@4
+            displayName: 'Execute Init for Apply'
             inputs:
-              azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                cd terraform
-                terraform init -backend=false
-                terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-artifact/tfplan
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+              commandOptions: '-backend=false'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Execute Terraform Apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+              commandOptions: '-backend=false -auto-approve $(Pipeline.Workspace)/tfplan-artifact/tfplan'
+              environmentServiceNameAzureRM: '$(azureServiceConnection)'
