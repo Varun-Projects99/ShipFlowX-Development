@@ -22,7 +22,7 @@ pool:
 variables:
   # The name of the Azure Resource Manager Service Connection configured in Azure DevOps
   azureServiceConnection: 'ShipFlowX-Azure'
-  terraformVersion: '1.15.7'
+  terraformVersion: 'latest'
 
 stages:
   # ==========================================================================
@@ -34,7 +34,17 @@ stages:
       - job: Init
         displayName: 'Terraform Init'
         steps:
-          # Use standard bash script to bypass service connection validation checks
+          # Install official Terraform binary
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # Print version for audit validation
+          - script: terraform version
+            displayName: 'Print Terraform Version'
+
+          # Run init
           - script: |
               cd terraform
               terraform init -backend=false
@@ -51,6 +61,17 @@ stages:
       - job: Validate
         displayName: 'Terraform Validate'
         steps:
+          # Install official Terraform binary
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # Print version for audit validation
+          - script: terraform version
+            displayName: 'Print Terraform Version'
+
+          # Run validation
           - script: |
               cd terraform
               terraform init -backend=false
@@ -68,6 +89,16 @@ stages:
       - job: Plan
         displayName: 'Terraform Plan'
         steps:
+          # Install official Terraform binary
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # Print version for audit validation
+          - script: terraform version
+            displayName: 'Print Terraform Version'
+
           # AzureCLI@2 is used for authenticated dry-run planning
           - task: AzureCLI@2
             displayName: 'Run terraform plan'
@@ -104,6 +135,16 @@ stages:
               buildType: 'current'
               artifactName: 'tfplan-artifact'
               targetPath: '$(Pipeline.Workspace)/tfplan-artifact'
+
+          # Install official Terraform binary
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # Print version for audit validation
+          - script: terraform version
+            displayName: 'Print Terraform Version'
 
           # AzureCLI@2 is used for authenticated resource deployment
           - task: AzureCLI@2
